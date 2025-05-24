@@ -66,5 +66,10 @@ def ask():
         conversation_history.append({"user": user_input, "ai": error_message})
         return render_template("index.html", response=error_message, user_input=user_input, conversation_history=conversation_history)
 
+#if __name__ == "__main__":
+#    app.run(debug=True)
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))  # Required for Render
+    app.run(host="0.0.0.0", port=port, debug=False)
