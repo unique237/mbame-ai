@@ -1,0 +1,11 @@
+# FREE OPEN SOURCE AI AGENT
+
+# THE DESIGN IS KINDA GOOD
+
+# FEEL FREE TO MODIFY IT
+
+# IT USES DEEPSEEK API
+
+# MODIFY, START, GOOOOOO CODE
+
+# MY EMAIL: martin44line@gmail.com / mbamembame@icloud.com
