@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session
 from dotenv import load_dotenv
 import os
 import requests
@@ -7,8 +7,8 @@ import json
 # Initialize Flask app
 app = Flask(__name__)
 
-# Store conversation history (in-memory, resets on server restart)
-conversation_history = []
+# Set a secret key for session management (required for sessions)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-here")  # Fallback if not set in .env
 
 # Load environment variables from .env file
 load_dotenv()
@@ -17,14 +17,19 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 # Route for the homepage
 @app.route("/")
 def index():
-    return render_template("index.html", conversation_history=conversation_history)
+    # Initialize session history if not present
+    if "conversation_history" not in session:
+        session["conversation_history"] = []
+    return render_template("index.html", conversation_history=session["conversation_history"])
 
 # Route to handle form submission and DeepSeek API call
 @app.route("/ask", methods=["POST"])
 def ask():
     user_input = request.form.get("user_input")
     if not user_input:
-        return render_template("index.html", response="Please enter a question.", user_input="", conversation_history=conversation_history)
+        if "conversation_history" not in session:
+            session["conversation_history"] = []
+        return render_template("index.html", response="Please enter a question.", user_input="", conversation_history=session["conversation_history"])
 
     # DeepSeek API call
     try:
@@ -49,25 +54,34 @@ def ask():
         api_response = response.json()
         answer = api_response["choices"][0]["message"]["content"]
 
-        # Append to conversation history
-        conversation_history.append({"user": user_input, "ai": answer})
+        # Append to session's conversation history
+        if "conversation_history" not in session:
+            session["conversation_history"] = []
+        session["conversation_history"].append({"user": user_input, "ai": answer})
+        session.modified = True  # Mark session as modified to ensure it saves
 
-        return render_template("index.html", response=answer, user_input=user_input, conversation_history=conversation_history)
+        return render_template("index.html", response=answer, user_input=user_input, conversation_history=session["conversation_history"])
     except requests.exceptions.RequestException as e:
         error_message = f"Error communicating with DeepSeek API: {str(e)}"
-        conversation_history.append({"user": user_input, "ai": error_message})
-        return render_template("index.html", response=error_message, user_input=user_input, conversation_history=conversation_history)
+        if "conversation_history" not in session:
+            session["conversation_history"] = []
+        session["conversation_history"].append({"user": user_input, "ai": error_message})
+        session.modified = True
+        return render_template("index.html", response=error_message, user_input=user_input, conversation_history=session["conversation_history"])
     except KeyError:
         error_message = "Error: Invalid response format from DeepSeek API."
-        conversation_history.append({"user": user_input, "ai": error_message})
-        return render_template("index.html", response=error_message, user_input=user_input, conversation_history=conversation_history)
+        if "conversation_history" not in session:
+            session["conversation_history"] = []
+        session["conversation_history"].append({"user": user_input, "ai": error_message})
+        session.modified = True
+        return render_template("index.html", response=error_message, user_input=user_input, conversation_history=session["conversation_history"])
     except Exception as e:
         error_message = f"Unexpected error: {str(e)}"
-        conversation_history.append({"user": user_input, "ai": error_message})
-        return render_template("index.html", response=error_message, user_input=user_input, conversation_history=conversation_history)
-
-#if __name__ == "__main__":
-#    app.run(debug=True)
+        if "conversation_history" not in session:
+            session["conversation_history"] = []
+        session["conversation_history"].append({"user": user_input, "ai": error_message})
+        session.modified = True
+        return render_template("index.html", response=error_message, user_input=user_input, conversation_history=session["conversation_history"])
 
 if __name__ == "__main__":
     import os
